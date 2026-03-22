@@ -1,4 +1,4 @@
-index.css/* Basic styling for the Yearbot dashboard. */
+/* Basic styling for the Yearbot dashboard. */
 :root {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
     Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -184,4 +184,535 @@ textarea {
   color: #dc3545;
   margin-bottom: 0.5rem;
   text-align: center;
+}
+
+/*
+ * Revised dashboard styling inspired by the user's preferred layout.
+ * The new classes below aim to approximate a clean, cardā€‘based UI with
+ * clear separation of sections, status badges and improved readability.
+ */
+
+/* Container for the entire dashboard */
+.dashboard-container {
+  padding: 1rem;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+/* Header with title, tagline and controls */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.header-left .title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.header-left .tagline {
+  margin: 0.25rem 0 0;
+  color: #555;
+  font-size: 0.85rem;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.rep-input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: #fff;
+  min-width: 120px;
+}
+
+.refresh-button {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.8rem;
+  background: #007acc;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Server row */
+.server-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.server-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  max-width: 400px;
+}
+
+.server-label {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.server-input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.85rem;
+}
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 0.8rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  gap: 0.6rem;
+}
+
+.stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+/* Main grid: sidebar and content */
+.main-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+}
+
+.sidebar {
+  width: 320px;
+  max-width: 100%;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 0.8rem;
+  box-sizing: border-box;
+  height: calc(100vh - 320px);
+  overflow-y: auto;
+}
+
+.filter-row {
+  margin-bottom: 0.8rem;
+}
+
+.search-input,
+.select-input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fafafa;
+  font-size: 0.85rem;
+}
+
+.tabs-row {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.tab-item {
+  flex: 1;
+  padding: 0.4rem;
+  text-align: center;
+  background: #fafafa;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.tab-item.active {
+  background: #007acc;
+  color: #fff;
+  border-color: #007acc;
+}
+
+.incident-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.incident-card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 0.6rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: grid;
+  grid-template-areas:
+    "badges id"
+    "title id"
+    "meta id";
+  grid-template-columns: 1fr auto;
+  row-gap: 0.25rem;
+}
+
+.incident-card:hover {
+  background: #f3f8ff;
+}
+
+.incident-card.active {
+  background: #0d47a1;
+  color: #fff;
+  border-color: #0d47a1;
+}
+
+.incident-badges {
+  grid-area: badges;
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 0.15rem 0.4rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+/* Status badges */
+.badge.status-open {
+  background: #fff8e1;
+  color: #795548;
+  border-color: #ffe082;
+}
+
+.badge.status-investigating {
+  background: #e3f2fd;
+  color: #1e88e5;
+  border-color: #90caf9;
+}
+
+.badge.status-resolved {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #a5d6a7;
+}
+
+/* Urgency badges */
+.badge.urgency-high {
+  background: #ffebee;
+  color: #c62828;
+  border-color: #ef9a9a;
+}
+
+.badge.urgency-medium {
+  background: #fff3e0;
+  color: #ef6c00;
+  border-color: #ffcc80;
+}
+
+.badge.urgency-low {
+  background: #f5f5f5;
+  color: #616161;
+  border-color: #eeeeee;
+}
+
+.incident-title {
+  grid-area: title;
+  font-weight: 600;
+  font-size: 0.9rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.incident-meta {
+  grid-area: meta;
+  font-size: 0.75rem;
+  color: inherit;
+}
+
+.incident-id {
+  grid-area: id;
+  font-size: 0.65rem;
+  color: inherit;
+  align-self: start;
+}
+
+/* Content area */
+.content-area {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 0.8rem;
+  overflow-y: auto;
+}
+
+.error-block {
+  margin-bottom: 0.8rem;
+  padding: 0.6rem;
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+  border-radius: 8px;
+}
+
+.loading-state,
+.empty-state {
+  text-align: center;
+  padding: 1rem;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.details-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.detail-card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.subject-card .subject-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.info-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.info-pill {
+  background: #f5f5f5;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.original-message {
+  margin-top: 0.4rem;
+}
+
+.original-title {
+  font-size: 0.8rem;
+  color: #555;
+  margin-bottom: 0.2rem;
+}
+
+.original-content {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
+
+.student-card .student-header {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.mini-info {
+  display: flex;
+  justify-content: space-between;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+}
+
+.mini-label {
+  color: #555;
+}
+
+.mini-value {
+  font-weight: 500;
+}
+
+.draft-reply .draft-title {
+  font-size: 0.8rem;
+  color: #555;
+  margin-bottom: 0.2rem;
+}
+
+.draft-reply .draft-content {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}
+
+.actions-card .actions-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.action-button {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.action-button.primary {
+  background: #007acc;
+  color: #fff;
+}
+
+.action-button.secondary {
+  background: #17a2b8;
+  color: #fff;
+}
+
+.action-button.outline {
+  background: #fff;
+  color: #333;
+  border: 1px solid #ccc;
+}
+
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.add-note {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.note-input {
+  width: 100%;
+  min-height: 80px;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+
+.save-note-button {
+  align-self: flex-end;
+  padding: 0.4rem 0.8rem;
+  background: #007acc;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.save-note-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.notes-card .notes-header {
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.note-item {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.note-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #555;
+  margin-bottom: 0.3rem;
+}
+
+.note-content {
+  white-space: pre-wrap;
 }
