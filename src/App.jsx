@@ -23,8 +23,8 @@ import {
  * fallback. The interface is intentionally kept lightweight and RTL-friendly.
  */
 
-// Base URL for API requests – adjust this only if the backend endpoint changes.
-// API base URL. Can be overridden by the user via the server input field.
+// Base URL for API requests – this is fixed for the Yearbot worker.
+// Remove the ability to edit the server address in the UI; the backend endpoint is constant.
 const DEFAULT_API_BASE = 'https://yearbot.noamaharonim.workers.dev';
 
 // Human‑readable labels for status, urgency and category codes.
@@ -78,8 +78,8 @@ async function fetchJson(url, options) {
 }
 
 export default function App() {
-  // Base URL for API requests. Defaults to the public Yearbot worker.
-  const [apiBase, setApiBase] = useState(DEFAULT_API_BASE);
+  // Base URL for API requests. Fixed to the public Yearbot worker.
+  const apiBase = DEFAULT_API_BASE;
   // Overall statistics returned by GET /incidents-summary
   const [summary, setSummary] = useState(null);
   // Raw list of incidents returned by GET /incidents
@@ -106,6 +106,11 @@ export default function App() {
   // Connection or request error message
   const [connectionError, setConnectionError] = useState('');
 
+  // State for showing the settings panel and managing additional reps.
+  const [showSettings, setShowSettings] = useState(false);
+  const [users, setUsers] = useState([repName]);
+  const [newUser, setNewUser] = useState('');
+
   /**
    * Perform an API request relative to API_BASE.
    * Sets connectionError on failure and rethrows the error.
@@ -113,8 +118,10 @@ export default function App() {
   /**
    * Normalize the base URL by stripping any trailing slashes.
    */
+  // Normalize the base once (strip trailing slashes). Even though apiBase is constant,
+  // this keeps the API request helper generic.
   const normalizedBase = useMemo(() => {
-    return String(apiBase || '').trim().replace(/\/+\$/, '');
+    return String(apiBase || '').trim().replace(/\/+$/, '');
   }, [apiBase]);
 
   /**
@@ -292,19 +299,30 @@ export default function App() {
 
   return (
     <div dir="rtl" className="dashboard-container">
-      {/* Header with title, tagline, rep name input and refresh */}
+      {/* Header with title, tagline, rep name input, settings toggle and refresh */}
       <header className="header">
         <div className="header-left">
           <h1 className="title">Yearbot Dashboard</h1>
           <p className="tagline">ניהול פניות נציגות בצורה מהירה, נעימה וברורה.</p>
         </div>
         <div className="header-right">
+          {/* Rep name input */}
           <input
             className="rep-input"
             value={repName}
             onChange={(e) => setRepName(e.target.value)}
             placeholder="שם נציג"
           />
+          {/* Settings toggle button – uses a simple gear symbol */}
+          <button
+            type="button"
+            className="settings-button"
+            onClick={() => setShowSettings((prev) => !prev)}
+            title="הגדרות"
+          >
+            ⚙️
+          </button>
+          {/* Refresh button */}
           <button
             className="refresh-button"
             disabled={loadingList || saving}
@@ -316,21 +334,56 @@ export default function App() {
         </div>
       </header>
 
-      {/* Server address row */}
-      <div className="server-row">
-        <div className="server-input-wrapper">
-          <label className="server-label" htmlFor="apiBase">כתובת השרת</label>
-          <input
-            id="apiBase"
-            dir="ltr"
-            className="server-input"
-            value={apiBase}
-            onChange={(e) => setApiBase(e.target.value)}
-            placeholder="https://yearbot.noamaharonim.workers.dev"
-          />
+      {/* Show connection errors globally (after header) */}
+      {connectionError && (
+        <div className="error-block connection-block">
+          {connectionError}
         </div>
-        {connectionError && <div className="connection-error">{connectionError}</div>}
-      </div>
+      )}
+
+      {/* Settings panel: appears when showSettings is true */}
+      {showSettings && (
+        <div className="settings-panel">
+          <h2 className="settings-title">הגדרות נציגים</h2>
+          <div className="users-list">
+            {users.map((user) => (
+              <div key={user} className="user-item">
+                <span>{user}</span>
+                <button
+                  type="button"
+                  className="remove-user-button"
+                  onClick={() => setUsers((prev) => prev.filter((u) => u !== user))}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="user-add-row">
+            <input
+              className="user-input"
+              type="text"
+              value={newUser}
+              onChange={(e) => setNewUser(e.target.value)}
+              placeholder="שם נציג חדש"
+            />
+            <button
+              type="button"
+              className="add-user-button"
+              disabled={!newUser.trim()}
+              onClick={() => {
+                const name = newUser.trim();
+                if (name && !users.includes(name)) {
+                  setUsers((prev) => [...prev, name]);
+                }
+                setNewUser('');
+              }}
+            >
+              הוסף
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Summary statistics */}
       <div className="stats-grid">
