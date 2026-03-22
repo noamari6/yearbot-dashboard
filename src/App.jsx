@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Clock3,
+  Settings,
 } from 'lucide-react';
 
 /**
@@ -122,6 +123,21 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [users, setUsers] = useState([repName]);
   const [newUser, setNewUser] = useState('');
+
+  // Persist repName in localStorage so the chosen representative is remembered across sessions.
+  useEffect(() => {
+    const stored = localStorage.getItem('yearbot.repName');
+    if (stored) {
+      setRepName(stored);
+      // ensure stored rep is in users list on initial load
+      setUsers((prev) => (prev.includes(stored) ? prev : [stored, ...prev]));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('yearbot.repName', repName);
+  }, [repName]);
 
   /**
    * Perform an API request relative to API_BASE.
@@ -333,7 +349,7 @@ export default function App() {
             onClick={() => setShowSettings((prev) => !prev)}
             title="הגדרות"
           >
-            ⚙️
+            <Settings size={16} />
           </button>
           {/* Refresh button */}
           <button
@@ -358,20 +374,32 @@ export default function App() {
       {showSettings && (
         <div className="settings-panel">
           <h2 className="settings-title">הגדרות נציגים</h2>
-          <div className="users-list">
-            {users.map((user) => (
-              <div key={user} className="user-item">
-                <span>{user}</span>
-                <button
-                  type="button"
-                  className="remove-user-button"
-                  onClick={() => setUsers((prev) => prev.filter((u) => u !== user))}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
+           <div className="users-list">
+             {users.map((user) => (
+               <div
+                 key={user}
+                 className={`user-item${user === repName ? ' active' : ''}`}
+                 onClick={() => setRepName(user)}
+               >
+                 <span>{user}</span>
+                 <button
+                   type="button"
+                   className="remove-user-button"
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     setUsers((prev) => prev.filter((u) => u !== user));
+                     // if removing current rep, fallback to first in list or default
+                     if (user === repName) {
+                       const remaining = users.filter((u) => u !== user);
+                       setRepName(remaining[0] || '');
+                     }
+                   }}
+                 >
+                   ✕
+                 </button>
+               </div>
+             ))}
+           </div>
           <div className="user-add-row">
             <input
               className="user-input"
