@@ -9,6 +9,7 @@ import {
   ClipboardList,
   CheckCircle2,
   RefreshCw,
+  Clock3,
 } from 'lucide-react';
 
 /**
@@ -23,7 +24,8 @@ import {
  */
 
 // Base URL for API requests – adjust this only if the backend endpoint changes.
-const API_BASE = 'https://yearbot.noamaharonim.workers.dev';
+// API base URL. Can be overridden by the user via the server input field.
+const DEFAULT_API_BASE = 'https://yearbot.noamaharonim.workers.dev';
 
 // Human‑readable labels for status, urgency and category codes.
 const statusLabel = {
@@ -76,6 +78,8 @@ async function fetchJson(url, options) {
 }
 
 export default function App() {
+  // Base URL for API requests. Defaults to the public Yearbot worker.
+  const [apiBase, setApiBase] = useState(DEFAULT_API_BASE);
   // Overall statistics returned by GET /incidents-summary
   const [summary, setSummary] = useState(null);
   // Raw list of incidents returned by GET /incidents
@@ -106,17 +110,38 @@ export default function App() {
    * Perform an API request relative to API_BASE.
    * Sets connectionError on failure and rethrows the error.
    */
-  const apiRequest = useCallback(async (path, options) => {
-    try {
-      const data = await fetchJson(`${API_BASE}${path}`, options);
-      setConnectionError('');
-      return data;
-    } catch (err) {
-      const message = err?.message || 'Request failed';
-      setConnectionError(message);
-      throw err;
-    }
-  }, []);
+  /**
+   * Normalize the base URL by stripping any trailing slashes.
+   */
+  const normalizedBase = useMemo(() => {
+    return String(apiBase || '').trim().replace(/\/+\$/, '');
+  }, [apiBase]);
+
+  /**
+   * Perform an API request relative to the current base. Sets
+   * connectionError on failure and rethrows the error.
+   */
+  const apiRequest = useCallback(
+    async (path, options) => {
+      try {
+        const data = await fetchJson(`${normalizedBase}${path}`, options);
+        setConnectionError('');
+        return data;
+      } catch (err) {
+        const message = err?.message || 'Request failed';
+        // Distinguish between generic fetch errors and server errors
+        if (message.includes('Failed to fetch')) {
+          setConnectionError(
+            'לא הצלחנו להגיע לשרת. בדוק שהכתובת נכונה ושמוגדר CORS ב־Worker.',
+          );
+        } else {
+          setConnectionError(message);
+        }
+        throw err;
+      }
+    },
+    [normalizedBase],
+  );
 
   /**
    * Load incident summary from the backend.
@@ -199,6 +224,14 @@ export default function App() {
     }
   }, [selectedId, loadIncidentDetails]);
 
+  /**
+   * Refresh both summary and incident list. Useful for manual refresh
+   * triggered by the user via the refresh button.
+   */
+  const refreshAll = useCallback(async () => {
+    await Promise.all([loadSummary(), loadIncidents()]);
+  }, [loadSummary, loadIncidents]);
+
   // Filter and sort incidents client‑side for search and urgency filter.
   const filteredIncidents = useMemo(() => {
     return [...incidents]
@@ -258,194 +291,235 @@ export default function App() {
   }
 
   return (
-    <div dir="rtl">
-      {/* Header section with title and statistics */}
-      <header className="dashboard-header">
-        <h1>Yearbot Dashboard</h1>
-        {connectionError && (
-          <div className="connection-error">{connectionError}</div>
-        )}
-        <div className="stats">
-          <div className="stat-card" title="מספר פניות פתוחות">
-            <ClipboardList size={18} />
-            <span>{summary?.open ?? 0}</span>
-            <span>פתוחות</span>
-          </div>
-          <div className="stat-card" title="מספר פניות בבדיקה">
-            <RefreshCw size={18} />
-            <span>{summary?.investigating ?? 0}</span>
-            <span>בבדיקה</span>
-          </div>
-          <div className="stat-card" title="מספר פניות סגורות">
-            <CheckCircle2 size={18} />
-            <span>{summary?.resolved ?? 0}</span>
-            <span>סגורות</span>
-          </div>
-          <div className="stat-card" title="פניות דחופות">
-            <AlertTriangle size={18} />
-            <span>{summary?.high ?? 0}</span>
-            <span>דחופות</span>
-          </div>
+    <div dir="rtl" className="dashboard-container">
+      {/* Header with title, tagline, rep name input and refresh */}
+      <header className="header">
+        <div className="header-left">
+          <h1 className="title">Yearbot Dashboard</h1>
+          <p className="tagline">ניהול פניות נציגות בצורה מהירה, נעימה וברורה.</p>
+        </div>
+        <div className="header-right">
+          <input
+            className="rep-input"
+            value={repName}
+            onChange={(e) => setRepName(e.target.value)}
+            placeholder="שם נציג"
+          />
+          <button
+            className="refresh-button"
+            disabled={loadingList || saving}
+            onClick={refreshAll}
+            title="רענון"
+          >
+            <RefreshCw size={16} /> רענן
+          </button>
         </div>
       </header>
 
-      {/* Main layout: sidebar list and content details */}
-      <div className="dashboard-main">
-        <aside className="sidebar">
-          {/* Filters and search */}
+      {/* Server address row */}
+      <div className="server-row">
+        <div className="server-input-wrapper">
+          <label className="server-label" htmlFor="apiBase">כתובת השרת</label>
           <input
-            type="text"
-            placeholder="חיפוש..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            id="apiBase"
+            dir="ltr"
+            className="server-input"
+            value={apiBase}
+            onChange={(e) => setApiBase(e.target.value)}
+            placeholder="https://yearbot.noamaharonim.workers.dev"
           />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">כל הסטטוסים</option>
-            <option value="open">פתוחות</option>
-            <option value="investigating">בבדיקה</option>
-            <option value="resolved">סגורות</option>
-          </select>
-          <select
-            value={urgencyFilter}
-            onChange={(e) => setUrgencyFilter(e.target.value)}
-          >
-            <option value="all">כל הדחיפויות</option>
-            <option value="high">גבוהה</option>
-            <option value="medium">בינונית</option>
-            <option value="low">נמוכה</option>
-          </select>
-          {/* Incident list */}
-          {loadingList ? (
-            <p>טוען רשימה...</p>
-          ) : (
-            filteredIncidents.map((incident) => (
-              <div
-                key={incident.id}
-                className={
-                  'incident-item' + (selectedId === incident.id ? ' active' : '')
-                }
-                onClick={() => setSelectedId(incident.id)}
+        </div>
+        {connectionError && <div className="connection-error">{connectionError}</div>}
+      </div>
+
+      {/* Summary statistics */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon"><ClipboardList size={20} /></div>
+          <div className="stat-info">
+            <div className="stat-value">{summary?.open ?? '-'}</div>
+            <div className="stat-label">פתוחות</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon"><Clock3 size={20} /></div>
+          <div className="stat-info">
+            <div className="stat-value">{summary?.investigating ?? '-'}</div>
+            <div className="stat-label">בבדיקה</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon"><CheckCircle2 size={20} /></div>
+          <div className="stat-info">
+            <div className="stat-value">{summary?.resolved ?? '-'}</div>
+            <div className="stat-label">סגורות</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon"><AlertTriangle size={20} /></div>
+          <div className="stat-info">
+            <div className="stat-value">{summary?.high ?? '-'}</div>
+            <div className="stat-label">דחופות</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main grid layout */}
+      <div className="main-grid">
+        <aside className="sidebar">
+          {/* Search input */}
+          <div className="filter-row">
+            <input
+              className="search-input"
+              type="text"
+              placeholder="חיפוש לפי נושא, תחום או נציג"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          {/* Status filter tabs */}
+          <div className="tabs-row">
+            {['all','open','investigating','resolved'].map((val) => (
+              <button
+                key={val}
+                className={`tab-item${statusFilter === val ? ' active' : ''}`}
+                onClick={() => setStatusFilter(val)}
               >
-                <div className="incident-item-header">
-                  <p className="incident-item-title">{incident.title}</p>
-                  <p style={{ fontSize: '0.75rem' }}>
-                    {urgencyLabel[incident.urgency] || incident.urgency}
-                  </p>
+                {val === 'all' ? 'הכל' : statusLabel[val] || val}
+              </button>
+            ))}
+          </div>
+          {/* Urgency select */}
+          <div className="filter-row">
+            <select
+              className="select-input"
+              value={urgencyFilter}
+              onChange={(e) => setUrgencyFilter(e.target.value)}
+            >
+              <option value="all">כל הדחיפויות</option>
+              <option value="high">גבוהה</option>
+              <option value="medium">בינונית</option>
+              <option value="low">נמוכה</option>
+            </select>
+          </div>
+          {/* Incident list */}
+          <div className="incident-list">
+            {loadingList && <div className="loading-state">טוען פניות...</div>}
+            {!loadingList && filteredIncidents.length === 0 && <div className="empty-state">אין פניות שתואמות לסינון שבחרת</div>}
+            {!loadingList && filteredIncidents.map((incident) => {
+              const active = selectedId === incident.id;
+              return (
+                <div
+                  key={incident.id}
+                  className={`incident-card${active ? ' active' : ''}`}
+                  onClick={() => setSelectedId(incident.id)}
+                >
+                  <div className="incident-badges">
+                    <span className={`badge status-${incident.status}`}>{statusLabel[incident.status] || incident.status}</span>
+                    <span className={`badge urgency-${incident.urgency}`}>{urgencyLabel[incident.urgency] || incident.urgency}</span>
+                  </div>
+                  <div className="incident-title">{incident.title}</div>
+                  <div className="incident-meta">{categoryLabel[incident.category] || incident.category} · {incident.message_count} פניות</div>
+                  <div className="incident-id">#{incident.id}</div>
                 </div>
-                <div className="incident-item-subtitle">
-                  {statusLabel[incident.status] || incident.status} ·{' '}
-                  {categoryLabel[incident.category] || incident.category}
-                </div>
-              </div>
-            ))
-          )}
+              );
+            })}
+          </div>
         </aside>
-        <section className="content">
-          {loadingDetails ? (
-            <p>טוען פרטים...</p>
-          ) : selectedIncident ? (
-            <div className="detail-card">
-              <h2>{selectedIncident.title}</h2>
-              <p>
-                <strong>סטטוס:</strong>{' '}
-                {statusLabel[selectedIncident.status] || selectedIncident.status}
-              </p>
-              <p>
-                <strong>דחיפות:</strong>{' '}
-                {urgencyLabel[selectedIncident.urgency] || selectedIncident.urgency}
-              </p>
-              <p>
-                <strong>תחום:</strong>{' '}
-                {categoryLabel[selectedIncident.category] || selectedIncident.category}
-              </p>
-              <p>
-                <strong>אחראי:</strong>{' '}
-                {selectedIncident.assigned_to || 'לא הוקצה'}
-              </p>
-              <p>
-                <strong>מספר הודעות:</strong> {selectedIncident.message_count}
-              </p>
-              <p>
-                <strong>נוצר ב:</strong>{' '}
-                {selectedIncident.created_at
-                  ? new Date(selectedIncident.created_at).toLocaleString()
-                  : '-'}
-              </p>
-              <p>
-                <strong>עודכן לאחרונה:</strong>{' '}
-                {selectedIncident.last_message_at
-                  ? new Date(selectedIncident.last_message_at).toLocaleString()
-                  : '-'}
-              </p>
-              {firstMessage && (
-                <>
-                  <h3>הודעה מקורית</h3>
-                  <p>{firstMessage.text}</p>
-                  {firstMessage.student_name && (
-                    <p>
-                      <strong>שם סטודנט:</strong> {firstMessage.student_name}
-                    </p>
-                  )}
-                  {firstMessage.student_email && (
-                    <p>
-                      <strong>אימייל:</strong> {firstMessage.student_email}
-                    </p>
-                  )}
-                  {firstMessage.student_phone && (
-                    <p>
-                      <strong>טלפון:</strong> {firstMessage.student_phone}
-                    </p>
-                  )}
-                </>
-              )}
-              {/* Note textarea and action buttons */}
-              <div className="actions">
-                <button
-                  className="primary"
-                  disabled={saving}
-                  onClick={() =>
-                    runRepAction({ status: 'investigating', author: repName })
-                  }
-                >
-                  קח לטיפול
-                </button>
-                <button
-                  className="secondary"
-                  disabled={saving || !noteText.trim()}
-                  onClick={() =>
-                    runRepAction({ note: noteText.trim(), author: repName })
-                  }
-                >
-                  עדכון
-                </button>
-                <button
-                  className="danger"
-                  disabled={saving || !noteText.trim()}
-                  onClick={() =>
-                    runRepAction({
-                      status: 'resolved',
-                      note: noteText.trim(),
-                      author: repName,
-                    })
-                  }
-                >
-                  סגור
-                </button>
+        <div className="content-area">
+          {error && <div className="error-block">{error}</div>}
+          {!selectedId && !loadingDetails && <div className="empty-state">בחר פנייה מהרשימה כדי לראות פרטים</div>}
+          {loadingDetails && selectedId && <div className="loading-state">טוען פרטי פנייה...</div>}
+          {!loadingDetails && selectedIncident && (
+            <div className="details-container">
+              {/* Incident info cards */}
+              <div className="detail-card subject-card">
+                <div className="subject-header">
+                  <h2 className="subject-title">{selectedIncident.title}</h2>
+                </div>
+                <div className="info-pills">
+                  <span className="info-pill"><strong>מספר פנייה:</strong> #{selectedIncident.id}</span>
+                  <span className="info-pill"><strong>תחום:</strong> {categoryLabel[selectedIncident.category] || selectedIncident.category}</span>
+                  <span className="info-pill"><strong>פניות קשורות:</strong> {selectedIncident.message_count}</span>
+                  <span className="info-pill"><strong>אחראי:</strong> {selectedIncident.assigned_to || 'טרם שויך'}</span>
+                </div>
+                {firstMessage && (
+                  <div className="original-message">
+                    <div className="original-title">הודעה מקורית</div>
+                    <p className="original-content">{firstMessage.text}</p>
+                  </div>
+                )}
               </div>
-              <textarea
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                placeholder="הערה או עדכון לנציגים..."
-              ></textarea>
-              {error && <div className="error">{error}</div>}
+              <div className="detail-card student-card">
+                <div className="student-header">פרטי סטודנט</div>
+                <div className="mini-info"><span className="mini-label">שם</span><span className="mini-value">{firstMessage?.student_name || firstMessage?.user || 'לא ידוע'}</span></div>
+                <div className="mini-info"><span className="mini-label">מייל</span><span className="mini-value">{firstMessage?.student_email || 'לא הוזן'}</span></div>
+                <div className="mini-info"><span className="mini-label">טלפון</span><span className="mini-value">{firstMessage?.student_phone || 'לא הוזן'}</span></div>
+                {firstMessage && (
+                  <div className="draft-reply">
+                    <div className="draft-title">טיוטת תשובה לסטודנט</div>
+                    <p className="draft-content">{firstMessage.student_reply_draft || 'עדיין לא נוצרה טיוטת תשובה'}</p>
+                  </div>
+                )}
+              </div>
+              <div className="detail-card actions-card">
+                <div className="actions-row">
+                  <button
+                    className="action-button primary"
+                    disabled={saving}
+                    onClick={() => runRepAction({ assigned_to: repName, status: 'investigating' })}
+                  >
+                    קח לטיפול
+                  </button>
+                  <button
+                    className="action-button secondary"
+                    disabled={saving}
+                    onClick={() => runRepAction({ status: 'investigating' })}
+                  >
+                    סמן בבדיקה
+                  </button>
+                  <button
+                    className="action-button outline"
+                    disabled={saving}
+                    onClick={() => runRepAction({ status: 'resolved' })}
+                  >
+                    סגור פנייה
+                  </button>
+                </div>
+                <div className="add-note">
+                  <textarea
+                    className="note-input"
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    placeholder="כתוב כאן עדכון שיישמר בהערות הטיפול"
+                  ></textarea>
+                  <button
+                    className="save-note-button"
+                    disabled={saving || !noteText.trim()}
+                    onClick={() => runRepAction({ author: repName, note: noteText.trim() })}
+                  >
+                    שמור עדכון
+                  </button>
+                </div>
+              </div>
+              <div className="detail-card notes-card">
+                <div className="notes-header">הערות טיפול</div>
+                <div className="notes-list">
+                  {(selectedIncident.notes || []).length === 0 && <div className="empty-state">עדיין אין הערות על הפנייה הזו</div>}
+                  {(selectedIncident.notes || []).map((note) => (
+                    <div key={note.id} className="note-item">
+                      <div className="note-meta">
+                        <span className="note-author">{note.author}</span>
+                        <span className="note-date">{note.created_at}</span>
+                      </div>
+                      <div className="note-content">{note.note}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          ) : (
-            <p>בחר פנייה כדי לראות את הפרטים.</p>
           )}
-        </section>
+        </div>
       </div>
     </div>
   );
