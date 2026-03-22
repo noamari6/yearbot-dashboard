@@ -51,6 +51,18 @@ const categoryLabel = {
   other: 'אחר',
 };
 
+// Format a timestamp into a human‑readable date/time string in Hebrew locale.
+function formatDateTime(ts) {
+  try {
+    return new Intl.DateTimeFormat('he-IL', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(new Date(ts));
+  } catch {
+    return ts;
+  }
+}
+
 // Utility to order incidents by urgency (high first, then medium, then low).
 function urgencyOrder(value) {
   if (value === 'high') return 3;
@@ -309,11 +321,12 @@ export default function App() {
           {/* Rep name input */}
           <input
             className="rep-input"
+            aria-label="שם נציג"
             value={repName}
             onChange={(e) => setRepName(e.target.value)}
             placeholder="שם נציג"
           />
-          {/* Settings toggle button – uses a simple gear symbol */}
+            {/* Settings toggle button – uses a simple gear symbol */}
           <button
             type="button"
             className="settings-button"
@@ -362,6 +375,7 @@ export default function App() {
           <div className="user-add-row">
             <input
               className="user-input"
+              aria-label="שם נציג חדש"
               type="text"
               value={newUser}
               onChange={(e) => setNewUser(e.target.value)}
@@ -424,6 +438,7 @@ export default function App() {
           <div className="filter-row">
             <input
               className="search-input"
+              aria-label="חיפוש"
               type="text"
               placeholder="חיפוש לפי נושא, תחום או נציג"
               value={search}
@@ -493,6 +508,8 @@ export default function App() {
                 <div className="info-pills">
                   <span className="info-pill"><strong>מספר פנייה:</strong> #{selectedIncident.id}</span>
                   <span className="info-pill"><strong>תחום:</strong> {categoryLabel[selectedIncident.category] || selectedIncident.category}</span>
+                  <span className="info-pill"><strong>סטטוס:</strong> {statusLabel[selectedIncident.status] || selectedIncident.status}</span>
+                  <span className="info-pill"><strong>דחיפות:</strong> {urgencyLabel[selectedIncident.urgency] || selectedIncident.urgency}</span>
                   <span className="info-pill"><strong>פניות קשורות:</strong> {selectedIncident.message_count}</span>
                   <span className="info-pill"><strong>אחראי:</strong> {selectedIncident.assigned_to || 'טרם שויך'}</span>
                 </div>
@@ -520,21 +537,21 @@ export default function App() {
                   <button
                     className="action-button primary"
                     disabled={saving}
-                    onClick={() => runRepAction({ assigned_to: repName, status: 'investigating' })}
+                    onClick={() => runRepAction({ assigned_to: repName, status: 'investigating', author: repName })}
                   >
                     קח לטיפול
                   </button>
                   <button
                     className="action-button secondary"
                     disabled={saving}
-                    onClick={() => runRepAction({ status: 'investigating' })}
+                    onClick={() => runRepAction({ status: 'investigating', author: repName })}
                   >
                     סמן בבדיקה
                   </button>
                   <button
                     className="action-button outline"
                     disabled={saving}
-                    onClick={() => runRepAction({ status: 'resolved' })}
+                    onClick={() => runRepAction({ status: 'resolved', author: repName })}
                   >
                     סגור פנייה
                   </button>
@@ -542,6 +559,7 @@ export default function App() {
                 <div className="add-note">
                   <textarea
                     className="note-input"
+                    aria-label="עדכון"
                     value={noteText}
                     onChange={(e) => setNoteText(e.target.value)}
                     placeholder="כתוב כאן עדכון שיישמר בהערות הטיפול"
@@ -559,15 +577,18 @@ export default function App() {
                 <div className="notes-header">הערות טיפול</div>
                 <div className="notes-list">
                   {(selectedIncident.notes || []).length === 0 && <div className="empty-state">עדיין אין הערות על הפנייה הזו</div>}
-                  {(selectedIncident.notes || []).map((note) => (
-                    <div key={note.id} className="note-item">
-                      <div className="note-meta">
-                        <span className="note-author">{note.author}</span>
-                        <span className="note-date">{note.created_at}</span>
+                  {(selectedIncident.notes || []).map((note) => {
+                    const dateLabel = formatDateTime(note.created_at);
+                    return (
+                      <div key={note.id} className="note-item">
+                        <div className="note-meta">
+                          <span className="note-author">{note.author}</span>
+                          <span className="note-date">{dateLabel}</span>
+                        </div>
+                        <div className="note-content">{note.note}</div>
                       </div>
-                      <div className="note-content">{note.note}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
